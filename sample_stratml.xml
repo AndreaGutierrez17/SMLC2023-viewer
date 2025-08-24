@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="part2stratml_charts.xsl"?>
+<StrategicPlan xmlns="http://stratml.net">
+  <Name>Sample Agency Strategic Plan</Name>
+  <Description>Quantitative indicators with charts.</Description>
+  <Mission>Serve the public.</Mission>
+  <Vision>Improve outcomes with data.</Vision>
+  <Values>
+    <Value>Transparency</Value>
+    <Value>Excellence</Value>
+  </Values>
+  <Objective>
+    <Name>Increase service coverage</Name>
+    <Description>Annual coverage in %.</Description>
+    <PerformanceIndicator>
+      <Name>Coverage (%)</Name>
+      <TargetResult>
+        <Date>2023</Date><Value>50%</Value><Unit>%</Unit>
+      </TargetResult>
+      <ActualResult>
+        <Date>2023</Date><Value>45%</Value>
+      </ActualResult>
+      <TargetResult>
+        <Date>2024</Date><Value>60%</Value><Unit>%</Unit>
+      </TargetResult>
+      <ActualResult>
+        <Date>2024</Date><Value>63%</Value>
+      </ActualResult>
+      <TargetResult>
+        <Date>2025</Date><Value>70%</Value><Unit>%</Unit>
+      </TargetResult>
+      <ActualResult>
+        <Date>2025</Date><Value>68%</Value>
+      </ActualResult>
+    </PerformanceIndicator>
+  </Objective>
+  <Objective>
+    <Name>Reduce cost per user</Name>
+    <Description>USD per user (lower is better).</Description>
+    <PerformanceIndicator>
+      <Name>Cost (USD)</Name>
+      <TargetResult>
+        <Date>2024-Q1</Date><Value>120</Value><Unit>USD</Unit>
+      </TargetResult>
+      <ActualResult>
+        <Date>2024-Q1</Date><Value>130</Value>
+      </ActualResult>
+      <TargetResult>
+        <Date>2024-Q2</Date><Value>110</Value><Unit>USD</Unit>
+      </TargetResult>
+      <ActualResult>
+        <Date>2024-Q2</Date><Value>95</Value>
+      </ActualResult>
+    </PerformanceIndicator>
+  </Objective>
+</StrategicPlan>
