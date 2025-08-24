@@ -55,7 +55,7 @@
     </xsl:choose>
   </xsl:template>
 
-  <!-- Root -->
+  <!-- Layout -->
   <xsl:template match="/">
     <html lang="en">
       <head>
@@ -66,11 +66,39 @@
             <xsl:when test="//*[local-name()='Name']">
               <xsl:value-of select="normalize-space(//*[local-name()='Name'][1])"/>
             </xsl:when>
-            <xsl:otherwise>StratML Viewer (Charts)</xsl:otherwise>
+            <xsl:otherwise>StratML Viewer</xsl:otherwise>
           </xsl:choose>
         </title>
+        <!-- Tu CSS externo (déjalo igual) -->
         <link rel="stylesheet" href="styles.css"/>
-        <!-- El JS no es necesario; los navegadores bloquean JS en XSLT. -->
+        <!-- Importante: sin charts.js (los navegadores no ejecutan JS en XSLT) -->
+        <style>
+          html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.45}
+          a{color:#0b57d0;text-decoration:none} a:hover{text-decoration:underline}
+          header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e6e6e6;z-index:5}
+          .wrap{max-width:1200px;margin:0 auto;padding:20px}
+          .title{font-size:28px;font-weight:800;margin:8px 0 2px}
+          .subtitle{color:#444;margin:0 0 10px}
+          .grid{display:grid;grid-template-columns:300px 1fr;gap:24px}
+          @media (max-width:1000px){.grid{grid-template-columns:1fr}}
+          .toc{border:1px solid #e6e6e6;border-radius:12px;padding:14px;background:#fafafa}
+          .toc h3{margin:0 0 8px;font-size:16px}
+          details{border:1px solid #eaeaea;border-radius:10px;padding:8px 10px;background:#fff;margin-bottom:8px}
+          summary{cursor:pointer;font-weight:600}
+          .card{border:1px solid #e6e6e6;border-radius:14px;padding:16px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:16px}
+          .pi-card h4{margin:0 0 6px;font-size:18px}
+          .muted{color:#555}
+          table{border-collapse:collapse;width:100%}
+          th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:middle}
+          .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e6e6e6;background:#f4f6fb;color:#0b57d0;font-size:12px}
+          .status-ok{color:#148f2d;font-weight:700}
+          .status-bad{color:#c62828;font-weight:700}
+          .spark{width:100%;height:16px;display:block}
+          .spark .bg{fill:#f0f2f5}
+          .spark .tbar{fill:#9aa4b2}
+          .spark .abar.ok{fill:#17a34a}
+          .spark .abar.bad{fill:#e11d48}
+        </style>
       </head>
       <body>
         <header>
@@ -143,14 +171,15 @@
         </main>
 
         <footer class="wrap" style="margin-top:30px;color:#666">
-          <small>StratML (ISO 17469-1). XSL con tablas y gráficos SVG (sin JS). Indicadores: Target vs Actual; Bar/Line/Table/Progress.</small>
+          <small>StratML (ISO 17469-1). XSL with SVG charts (no JS). Target vs Actual por período; verde = cumple, rojo = debajo.</small>
         </footer>
       </body>
     </html>
   </xsl:template>
 
-  <!-- Indicator card -->
+  <!-- Indicador con SVG sin JS -->
   <xsl:template name="render-indicator">
+    <xsl:variable name="this" select="."/>
     <div class="card pi-card">
       <h4>
         <xsl:value-of select="normalize-space(./*[local-name()='Name'][1] | ./@Name | .)"/>
@@ -160,83 +189,58 @@
       </div>
 
       <xsl:variable name="targets" select="./*[local-name()='TargetResult']"/>
-
-      <!-- Arrays para tabla (aún útiles) -->
-      <xsl:variable name="labels">
-        <xsl:text>[</xsl:text>
-        <xsl:for-each select="$targets">
-          <xsl:variable name="d">
-            <xsl:call-template name="date-of"><xsl:with-param name="ctx" select="."/></xsl:call-template>
-          </xsl:variable>
-          <xsl:if test="position()&gt;1">,</xsl:if>
-          "<xsl:value-of select="translate($d,'&quot;','')"/>"
-        </xsl:for-each>
-        <xsl:text>]</xsl:text>
-      </xsl:variable>
-
-      <xsl:variable name="targetsArr">
-        <xsl:text>[</xsl:text>
-        <xsl:for-each select="$targets">
-          <xsl:variable name="t"><xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="."/></xsl:call-template></xsl:variable>
-          <xsl:if test="position()&gt;1">,</xsl:if>
-          <xsl:call-template name="num"><xsl:with-param name="s" select="$t"/></xsl:call-template>
-        </xsl:for-each>
-        <xsl:text>]</xsl:text>
-      </xsl:variable>
-
-      <xsl:variable name="actualsArr">
-        <xsl:text>[</xsl:text>
-        <xsl:for-each select="$targets">
-          <xsl:variable name="dateT">
-            <xsl:call-template name="date-of"><xsl:with-param name="ctx" select="."/></xsl:call-template>
-          </xsl:variable>
-          <xsl:variable name="matchA"
-            select="../[local-name()='ActualResult'][normalize-space(./[local-name()='Date'])=normalize-space($dateT) or normalize-space(@Date)=normalize-space($dateT)][1]"/>
-          <xsl:variable name="aval">
-            <xsl:choose>
-              <xsl:when test="$matchA">
-                <xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="$matchA"/></xsl:call-template>
-              </xsl:when>
-              <xsl:otherwise>NaN</xsl:otherwise>
-            </xsl:choose>
-          </xsl:variable>
-          <xsl:if test="position()&gt;1">,</xsl:if>
-          <xsl:choose>
-            <xsl:when test="string($aval)='NaN'">null</xsl:when>
-            <xsl:otherwise><xsl:call-template name="num"><xsl:with-param name="s" select="$aval"/></xsl:call-template></xsl:otherwise>
-          </xsl:choose>
-        </xsl:for-each>
-        <xsl:text>]</xsl:text>
-      </xsl:variable>
-
       <xsl:variable name="unit">
-        <xsl:call-template name="unit-of"><xsl:with-param name="ctx" select="($targets|./*[local-name()='ActualResult'])[1]"/></xsl:call-template>
+        <xsl:call-template name="unit-of">
+          <xsl:with-param name="ctx" select="($targets|./*[local-name()='ActualResult'])[1]"/>
+        </xsl:call-template>
       </xsl:variable>
 
-      <div class="toolbar" aria-label="Indicator view">
-        <button class="active">Table</button>
-        <button>Bar</button>
-        <button>Line</button>
-        <button>Progress</button>
+      <div class="toolbar" style="margin:10px 0">
         <span class="pill"><xsl:value-of select="$unit"/></span>
       </div>
 
-      <!-- TABLE -->
       <div class="view view-table">
-        <table aria-label="Target vs Actual table">
-          <thead><tr><th>Period</th><th>Target</th><th>Actual</th><th>Status</th></tr></thead>
+        <table aria-label="Target vs Actual">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Target</th>
+              <th>Actual</th>
+              <th>Status</th>
+              <th style="width:260px">Graph</th>
+            </tr>
+          </thead>
           <tbody>
             <xsl:for-each select="$targets">
-              <xsl:variable name="d"><xsl:call-template name="date-of"><xsl:with-param name="ctx" select="."/></xsl:call-template></xsl:variable>
-              <xsl:variable name="t"><xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="."/></xsl:call-template></xsl:variable>
+              <xsl:variable name="d">
+                <xsl:call-template name="date-of"><xsl:with-param name="ctx" select="."/></xsl:call-template>
+              </xsl:variable>
+              <xsl:variable name="t">
+                <xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="."/></xsl:call-template>
+              </xsl:variable>
               <xsl:variable name="aNode"
                 select="../[local-name()='ActualResult'][normalize-space(./[local-name()='Date'])=normalize-space($d) or normalize-space(@Date)=normalize-space($d)][1]"/>
-              <xsl:variable name="a"><xsl:choose>
-                <xsl:when test="$aNode"><xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="$aNode"/></xsl:call-template></xsl:when>
-                <xsl:otherwise>—</xsl:otherwise>
-              </xsl:choose></xsl:variable>
+              <xsl:variable name="a">
+                <xsl:choose>
+                  <xsl:when test="$aNode">
+                    <xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="$aNode"/></xsl:call-template>
+                  </xsl:when>
+                  <xsl:otherwise>—</xsl:otherwise>
+                </xsl:choose>
+              </xsl:variable>
               <xsl:variable name="tn"><xsl:call-template name="num"><xsl:with-param name="s" select="$t"/></xsl:call-template></xsl:variable>
               <xsl:variable name="an"><xsl:call-template name="num"><xsl:with-param name="s" select="$a"/></xsl:call-template></xsl:variable>
+
+              <!-- Porcentaje (an / tn) para la barrita -->
+              <xsl:variable name="pct">
+                <xsl:choose>
+                  <xsl:when test="number($tn) &gt; 0 and not($a='—')">
+                    <xsl:value-of select="round(100*number($an) div number($tn))"/>
+                  </xsl:when>
+                  <xsl:otherwise>-1</xsl:otherwise>
+                </xsl:choose>
+              </xsl:variable>
+
               <tr>
                 <td><xsl:value-of select="$d"/></td>
                 <td><xsl:value-of select="$t"/></td>
@@ -254,173 +258,74 @@
                     </xsl:otherwise>
                   </xsl:choose>
                 </td>
+                <td>
+                  <!-- Spark bar sin JS: barra gris (target=100), barra color (actual= pct%) -->
+                  <svg class="spark" viewBox="0 0 100 16" preserveAspectRatio="none" role="img"
+                       aria-label="Progress">
+                    <rect class="bg" x="0" y="3" width="100" height="10" rx="5" ry="5"/>
+                    <rect class="tbar" x="0" y="3" width="100" height="10" rx="5" ry="5" opacity="0.25"/>
+                    <xsl:if test="number($pct) &gt;= 0">
+                      <rect x="0" y="3" height="10" rx="5" ry="5">
+                        <xsl:attribute name="width"><xsl:value-of select="$pct"/></xsl:attribute>
+                        <xsl:attribute name="class">
+                          <xsl:choose>
+                            <xsl:when test="number($an) &gt;= number($tn)">abar ok</xsl:when>
+                            <xsl:otherwise>abar bad</xsl:otherwise>
+                          </xsl:choose>
+                        </xsl:attribute>
+                      </rect>
+                    </xsl:if>
+                  </svg>
+                </td>
               </tr>
             </xsl:for-each>
           </tbody>
         </table>
       </div>
 
-      <!-- BAR (SVG, sin JS) -->
-      <div class="view view-bar">
-        <div class="chart-wrap">
-          <svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" role="img" aria-label="Bar chart: Target vs Actual">
-            <xsl:variable name="h" select="220"/>
-            <xsl:variable name="top" select="20"/>
-            <xsl:variable name="left" select="60"/>
-            <xsl:variable name="barW" select="18"/>
-            <xsl:variable name="gap" select="14"/>
-            <xsl:variable name="group" select="$barW*2 + $gap"/>
-            <xsl:variable name="acts" select="./*[local-name()='ActualResult']"/>
+      <!-- Resumen progreso (último período) -->
+      <xsl:variable name="tLast">
+        <xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="$targets[last()]"/></xsl:call-template>
+      </xsl:variable>
+      <xsl:variable name="aLast">
+        <xsl:variable name="dLast"><xsl:call-template name="date-of"><xsl:with-param name="ctx" select="$targets[last()]"/></xsl:call-template></xsl:variable>
+        <xsl:variable name="aNodeLast" select="../[local-name()='ActualResult'][normalize-space(./[local-name()='Date'])=normalize-space($dLast) or normalize-space(@Date)=normalize-space($dLast)][1]"/>
+        <xsl:choose>
+          <xsl:when test="$aNodeLast"><xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="$aNodeLast"/></xsl:call-template></xsl:when>
+          <xsl:otherwise>0</xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
+      <xsl:variable name="tn"><xsl:call-template name="num"><xsl:with-param name="s" select="$tLast"/></xsl:call-template></xsl:variable>
+      <xsl:variable name="an"><xsl:call-template name="num"><xsl:with-param name="s" select="$aLast"/></xsl:call-template></xsl:variable>
+      <xsl:variable name="pctLast">
+        <xsl:choose>
+          <xsl:when test="number($tn)&gt;0">
+            <xsl:value-of select="round(100*number($an) div number($tn))"/>
+          </xsl:when>
+          <xsl:otherwise>0</xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
 
-            <!-- máximos -->
-            <xsl:variable name="maxT">
-              <xsl:for-each select="./*[local-name()='TargetResult']">
-                <xsl:sort data-type="number"
-                  select="number(translate(normalize-space((./*[local-name()='Value']|@Value|.)[1]), '%$,₱€£¥ ', ''))"/>
-                <xsl:if test="position()=last()">
-                  <xsl:value-of select="number(translate(normalize-space((./*[local-name()='Value']|@Value|.)[1]), '%$,₱€£¥ ', ''))"/>
-                </xsl:if>
-              </xsl:for-each>
-            </xsl:variable>
-            <xsl:variable name="maxA">
-              <xsl:for-each select="$acts">
-                <xsl:sort data-type="number"
-                  select="number(translate(normalize-space((./*[local-name()='Value']|@Value|.)[1]), '%$,₱€£¥ ', ''))"/>
-                <xsl:if test="position()=last()">
-                  <xsl:value-of select="number(translate(normalize-space((./*[local-name()='Value']|@Value|.)[1]), '%$,₱€£¥ ', ''))"/>
-                </xsl:if>
-              </xsl:for-each>
-            </xsl:variable>
-            <xsl:variable name="max">
-              <xsl:choose>
-                <xsl:when test="number($maxT) &gt;= number($maxA)"><xsl:value-of select="number($maxT)"/></xsl:when>
-                <xsl:otherwise><xsl:value-of select="number($maxA)"/></xsl:otherwise>
-              </xsl:choose>
-            </xsl:variable>
-
-            <!-- ejes y grid -->
-            <line x1="{$left}" y1="{$top+$h}" x2="{$left+800}" y2="{$top+$h}" stroke="#ddd"/>
-            <line x1="{$left}" y1="{$top}" x2="{$left}" y2="{$top+$h}" stroke="#ddd"/>
-            <xsl:for-each select="'0.25','0.50','0.75','1.00'">
-              <xsl:variable name="p" select="number(.)"/>
-              <line x1="{$left}" x2="{$left+800}"
-                    y1="{$top + $h - round($h * $p)}"
-                    y2="{$top + $h - round($h * $p)}"
-                    stroke="#eee"/>
-            </xsl:for-each>
-
-            <!-- barras -->
-            <xsl:for-each select="./*[local-name()='TargetResult']">
-              <xsl:variable name="i" select="position()"/>
-              <xsl:variable name="d">
-                <xsl:call-template name="date-of"><xsl:with-param name="ctx" select="."/></xsl:call-template>
-              </xsl:variable>
-              <xsl:variable name="t">
-                <xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="."/></xsl:call-template>
-              </xsl:variable>
-              <xsl:variable name="tn">
-                <xsl:call-template name="num"><xsl:with-param name="s" select="$t"/></xsl:call-template>
-              </xsl:variable>
-              <xsl:variable name="aNode"
-                select="../[local-name()='ActualResult'][normalize-space(./[local-name()='Date'])=normalize-space($d) or normalize-space(@Date)=normalize-space($d)][1]"/>
-              <xsl:variable name="a">
-                <xsl:choose>
-                  <xsl:when test="$aNode">
-                    <xsl:call-template name="text-or-attr"><xsl:with-param name="ctx" select="$aNode"/></xsl:call-template>
-                  </xsl:when>
-                  <xsl:otherwise>0</xsl:otherwise>
-                </xsl:choose>
-              </xsl:variable>
-              <xsl:variable name="an">
-                <xsl:call-template name="num"><xsl:with-param name="s" select="$a"/></xsl:call-template>
-              </xsl:variable>
-
-              <xsl:variable name="gx" select="$left + $group * ($i - 1)"/>
-              <xsl:variable name="tH" select="round($h * number($tn) div number($max))"/>
-              <xsl:variable name="aH" select="round($h * number($an) div number($max))"/>
-
-              <!-- Target -->
-              <rect x="{$gx}" width="{$barW}"
-                    y="{$top + $h - $tH}" height="{$tH}"
-                    fill="#d7e6ff" stroke="#0b57d0"/>
-              <!-- Actual -->
-              <rect x="{$gx + $barW}" width="{$barW}"
-                    y="{$top + $h - $aH}" height="{$aH}"
-                    fill="#cdeed6" stroke="#148f2d"/>
-
-              <!-- etiqueta período -->
-              <text x="{$gx + $barW}" y="{$top + $h + 14}" text-anchor="middle" font-size="11">
-                <xsl:value-of select="$d"/>
-              </text>
-            </xsl:for-each>
-
-            <!-- leyenda -->
-            <rect x="{$left+4}" y="{$top-14}" width="10" height="10" fill="#d7e6ff" stroke="#0b57d0"/>
-            <text x="{$left+20}" y="{$top-5}" font-size="11">Target</text>
-            <rect x="{$left+70}" y="{$top-14}" width="10" height="10" fill="#cdeed6" stroke="#148f2d"/>
-            <text x="{$left+86}" y="{$top-5}" font-size="11">Actual</text>
-          </svg>
-        </div>
+      <div class="muted" style="margin-top:8px">
+        Progress (last period): <strong><xsl:value-of select="$aLast"/></strong> of <strong><xsl:value-of select="$tLast"/></strong> (<xsl:value-of select="$pctLast"/>%)
       </div>
 
-      <!-- LINE (SVG, sin JS) -->
-      <div class="view view-line">
-        <div class="chart-wrap">
-          <svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" role="img" aria-label="Line chart: Target vs Actual">
-            <xsl:variable name="h" select="220"/>
-            <xsl:variable name="top" select="20"/>
-            <xsl:variable name="left" select="60"/>
-            <xsl:variable name="group" select="50"/>
-
-            <!-- máximo global -->
-            <xsl:variable name="maxAll">
-              <xsl:for-each select="./[local-name()='TargetResult'] | ./[local-name()='ActualResult']">
-                <xsl:sort data-type="number"
-                  select="number(translate(normalize-space((./*[local-name()='Value']|@Value|.)[1]), '%$,₱€£¥ ', ''))"/>
-                <xsl:if test="position()=last()">
-                  <xsl:value-of select="number(translate(normalize-space((./*[local-name()='Value']|@Value|.)[1]), '%$,₱€£¥ ', ''))"/>
-                </xsl:if>
-              </xsl:for-each>
-            </xsl:variable>
-
-            <!-- ejes -->
-            <line x1="{$left}" y1="{$top+$h}" x2="{$left+800}" y2="{$top+$h}" stroke="#ddd"/>
-            <line x1="{$left}" y1="{$top}" x2="{$left}" y2="{$top+$h}" stroke="#ddd"/>
-
-            <!-- puntos TARGET -->
-            <xsl:variable name="ptsT">
-              <xsl:for-each select="./*[local-name()='TargetResult']">
-                <xsl:variable name="i" select="position()"/>
-                <xsl:variable name="t"
-                  select="number(translate(normalize-space((./*[local-name()='Value']|@Value|.)[1]), '%$,₱€£¥ ', ''))"/>
-                <xsl:variable name="x" select="$left + $group * $i"/>
-                <xsl:variable name="y" select="$top + $h - round($h * $t div number($maxAll))"/>
-                <xsl:if test="position() &gt; 1"><xsl:text> </xsl:text></xsl:if>
-                <xsl:value-of select="concat($x,',',$y)"/>
-              </xsl:for-each>
-            </xsl:variable>
-            <polyline points="{$ptsT}" fill="none" stroke="#0b57d0" stroke-width="2" stroke-dasharray="4 4"/>
-
-            <!-- puntos ACTUAL -->
-            <xsl:variable name="ptsA">
-              <xsl:for-each select="./*[local-name()='TargetResult']">
-                <xsl:variable name="i" select="position()"/>
-                <xsl:variable name="d">
-                  <xsl:call-template name="date-of"><xsl:with-param name="ctx" select="."/></xsl:call-template>
-                </xsl:variable>
-                <xsl:variable name="aNode"
-                  select="../[local-name()='ActualResult'][normalize-space(./[local-name()='Date'])=normalize-space($d) or normalize-space(@Date)=normalize-space($d)][1]"/>
-                <xsl:variable name="a" select="number(translate(normalize-space(( $aNode/*[local-name()='Value'] | $aNode/@Value | $aNode )[1]), '%$,₱€£¥ ', ''))"/>
-                <xsl:variable name="x" select="$left + $group * $i"/>
-                <xsl:variable name="y" select="$top + $h - round($h * $a div number($maxAll))"/>
-                <xsl:if test="position() &gt; 1"><xsl:text> </xsl:text></xsl:if>
-                <xsl:value-of select="concat($x,',',$y)"/>
-              </xsl:for-each>
-            </xsl:variable>
-            <polyline points="{$ptsA}" fill="none" stroke="#148f2d" stroke-width="2"/>
-          </svg>
-        </div>
+      <div class="progress" aria-label="Progress bar" style="height:14px;background:#f0f2f5;border-radius:12px;overflow:hidden;margin-top:6px">
+        <span style="display:block;height:100%">
+          <xsl:attribute name="style">
+            <xsl:text>display:block;height:100%;</xsl:text>
+            <xsl:text>background:</xsl:text>
+            <xsl:choose>
+              <xsl:when test="number($an) &gt;= number($tn)">#17a34a</xsl:when>
+              <xsl:otherwise>#e11d48</xsl:otherwise>
+            </xsl:choose>
+            <xsl:text>;</xsl:text>
+            <xsl:text>width:</xsl:text><xsl:value-of select="$pctLast"/><xsl:text>%;</xsl:text>
+          </xsl:attribute>
+        </span>
       </div>
 
-      <!-- PROGRESS -->
-      <div class="view view-progress">
+    </div>
+  </xsl:template>
+
+</xsl:stylesheet>
